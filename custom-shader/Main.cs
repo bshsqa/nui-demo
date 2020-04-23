@@ -26,7 +26,7 @@ namespace NUISample
     {
         private PanGestureDetector detector;
         private View container;
-        private ShaderEffectView shaderEffectView;
+        private ClippingMaskView clippingMaskView;
         /// <summary>
         /// Override to create the required scene
         /// </summary>
@@ -66,32 +66,32 @@ namespace NUISample
             };
             container.Add(backgroundImage);
 
-            shaderEffectView = new ShaderEffectView("./res/background_image.jpg", "./res/mask_image.png")
+            clippingMaskView = new ClippingMaskView("./res/background_image.jpg", "./res/mask_image.png")
             {
                 Size = new Size(150, 150),
                 PositionUsesPivotPoint = true,
                 Position = new Position(container.Size.Width / 2.0f, container.Size.Height / 2.0f),
             };
-            container.Add(shaderEffectView);
+            container.Add(clippingMaskView);
 
-            float positionX = (shaderEffectView.Position.X - shaderEffectView.Size.Width / 2.0f) / container.Size.Width;
-            float positionY = (shaderEffectView.Position.Y - shaderEffectView.Size.Height / 2.0f) / container.Size.Height;
-            float sizeWidth = shaderEffectView.Size.Width / container.Size.Width;
-            float sizeHeight = shaderEffectView.Size.Height / container.Size.Height;
+            float positionX = (clippingMaskView.Position.X - clippingMaskView.Size.Width / 2.0f) / container.Size.Width;
+            float positionY = (clippingMaskView.Position.Y - clippingMaskView.Size.Height / 2.0f) / container.Size.Height;
+            float sizeWidth = clippingMaskView.Size.Width / container.Size.Width;
+            float sizeHeight = clippingMaskView.Size.Height / container.Size.Height;
 
-            shaderEffectView.MaskImage.PixelArea = new Vector4(positionX, positionY, sizeWidth, sizeHeight);
+            clippingMaskView.BackgroundImage.PixelArea = new Vector4(positionX, positionY, sizeWidth, sizeHeight);
 
             detector = new PanGestureDetector();
             detector.Attach(container);
             detector.Detected += (object source, PanGestureDetector.DetectedEventArgs args) =>
             {
-                shaderEffectView.Position = new Position(args.PanGesture.Position);
-                positionX = (shaderEffectView.Position.X - shaderEffectView.Size.Width / 2.0f) / container.Size.Width;
-                positionY = (shaderEffectView.Position.Y - shaderEffectView.Size.Height / 2.0f) / container.Size.Height;
-                sizeWidth = shaderEffectView.Size.Width / container.Size.Width;
-                sizeHeight = shaderEffectView.Size.Height / container.Size.Height;
+                clippingMaskView.Position = new Position(args.PanGesture.Position);
+                positionX = (clippingMaskView.Position.X - clippingMaskView.Size.Width / 2.0f) / container.Size.Width;
+                positionY = (clippingMaskView.Position.Y - clippingMaskView.Size.Height / 2.0f) / container.Size.Height;
+                sizeWidth = clippingMaskView.Size.Width / container.Size.Width;
+                sizeHeight = clippingMaskView.Size.Height / container.Size.Height;
 
-                shaderEffectView.MaskImage.PixelArea = new Vector4(positionX, positionY, sizeWidth, sizeHeight);
+                clippingMaskView.BackgroundImage.PixelArea = new Vector4(positionX, positionY, sizeWidth, sizeHeight);
             };
 
             View controlPannel = new View()
@@ -121,14 +121,14 @@ namespace NUISample
                 {
                     Position newPosition = CalculatePositionByDirection(type);
 
-                    positionX = (newPosition.X - shaderEffectView.Size.Width / 2.0f) / container.Size.Width;
-                    positionY = (newPosition.Y - shaderEffectView.Size.Height / 2.0f) / container.Size.Height;
-                    sizeWidth = shaderEffectView.Size.Width / container.Size.Width;
-                    sizeHeight = shaderEffectView.Size.Height / container.Size.Height;
+                    positionX = (newPosition.X - clippingMaskView.Size.Width / 2.0f) / container.Size.Width;
+                    positionY = (newPosition.Y - clippingMaskView.Size.Height / 2.0f) / container.Size.Height;
+                    sizeWidth = clippingMaskView.Size.Width / container.Size.Width;
+                    sizeHeight = clippingMaskView.Size.Height / container.Size.Height;
 
                     Animation moveAnimation = new Animation(150);
-                    moveAnimation.AnimateTo(shaderEffectView, "position", newPosition);
-                    moveAnimation.AnimateTo(shaderEffectView.MaskImage, "pixelArea", new Vector4(positionX, positionY, sizeWidth, sizeHeight));
+                    moveAnimation.AnimateTo(clippingMaskView, "position", newPosition);
+                    moveAnimation.AnimateTo(clippingMaskView.BackgroundImage, "pixelArea", new Vector4(positionX, positionY, sizeWidth, sizeHeight));
                     moveAnimation.Play();
                 };
 
@@ -144,7 +144,7 @@ namespace NUISample
         private Position CalculatePositionByDirection(PannelButton.Direction direction)
         {
             Position position = new Position();
-            Size effectViewSize = shaderEffectView.Size / 2.0f;
+            Size effectViewSize = clippingMaskView.Size / 2.0f;
             Size containerSize = container.Size;
 
             switch (direction)

@@ -4,24 +4,8 @@ using Tizen.NUI.BaseComponents;
 
 namespace NUISample
 {
-    class ShaderEffectView : View
+    class ClippingMaskView : View
     {
-        public struct Vec2
-        {
-            float x;
-            float y;
-            public Vec2(float xIn, float yIn)
-            {
-                x = xIn;
-                y = yIn;
-            }
-        }
-
-        public struct TexturedQuadVertex
-        {
-            public Vec2 position;
-        };
-
         static readonly string VERTEX_SHADER =
         "attribute mediump vec2 aPosition;\n" +
         "uniform mediump mat4 uMvpMatrix;\n" +
@@ -39,23 +23,27 @@ namespace NUISample
 
         static readonly string FRAGMENT_SHADER =
         "uniform lowp vec4 uColor;\n" +
+        // Clipped image texture to be masked
         "uniform sampler2D sTexture;\n" +
+        // Mask Texture
         "uniform sampler2D sMaskTexture;\n" +
         "varying mediump vec2 vTexCoord;\n" +
         "void main()\n" +
         "{\n" +
         "    gl_FragColor = texture2D( sTexture, vTexCoord ) * uColor;\n" +
+             // Apply alpha masking
         "    gl_FragColor.a *= texture2D( sMaskTexture, vTexCoord ).a;\n" +
         "}\n";
         
 
         /// <summary>
-        /// View which is using custom shader
+        /// View which is clipping image and applying mask
         /// </summary>
-        /// <param name="resourceImageUrl">Image which will be cropped</param>
+        /// <param name="resourceImageUrl">Image which will be cripped</param>
         /// <param name="maskImageUrl">Image for masking</param>
-        public ShaderEffectView(string resourceImageUrl, string maskImageUrl)
+        public ClippingMaskView(string resourceImageUrl, string maskImageUrl)
         {
+            // Load mask image file and make PixelData
             PixelData pixelData = PixelBuffer.Convert(
                 ImageLoading.LoadImageFromFile( 
                     maskImageUrl,
@@ -64,6 +52,7 @@ namespace NUISample
                 )
             );
 
+            // Make mask image texture and upload.
             Texture maskTexture = new Texture(
                 TextureType.TEXTURE_2D,
                 pixelData.GetPixelFormat(),
@@ -74,7 +63,8 @@ namespace NUISample
 
             Size maskImageSize = new Size(maskTexture.GetWidth(), maskTexture.GetHeight());
 
-            MaskImage = new ImageView()
+            // Background Image will be clipped
+            BackgroundImage = new ImageView()
             {
                 PositionUsesPivotPoint = true,
                 PivotPoint = Tizen.NUI.PivotPoint.Center,
@@ -82,8 +72,9 @@ namespace NUISample
                 Size = maskImageSize,
                 ResourceUrl = resourceImageUrl,
             };
-            Add(MaskImage);
+            Add(BackgroundImage);
 
+            // Set properties for render task
             Camera camera = new Camera(new Vector2(maskImageSize.Width,maskImageSize.Height))
             {
                 PositionUsesPivotPoint = true,
@@ -95,13 +86,14 @@ namespace NUISample
 
             RenderTask task = Window.Instance.GetRenderTaskList().CreateTask();
             task.SetRefreshRate((uint)RenderTask.RefreshRate.REFRESH_ALWAYS);
-            task.SetSourceView(MaskImage);
+            task.SetSourceView(BackgroundImage);
             task.SetExclusive(true);
             task.SetInputEnabled(false);
             task.SetClearColor(new Vector4(1.0f,1.0f,1.0f,1.0f));
             task.SetClearEnabled(true);
             task.SetCamera(camera);
 
+            // Clipped Texture
             Texture clippedTexture = new Texture(
                 TextureType.TEXTURE_2D,
                 PixelFormat.RGBA8888,
@@ -118,12 +110,17 @@ namespace NUISample
             frameBuffer.AttachColorTexture( clippedTexture );
             task.SetFrameBuffer(frameBuffer);
 
-            /* Create Property buffer */
+            /* Create Renderer to apply mask */
+            const float halfWidth = 0.5f;
+            const float halfHeight = 0.5f;
+            Vector2[] quadVertexData = new Vector2[4] { { Vector2(-halfWidth, -halfHeight) },
+                                                        { Vector2(-halfWidth, halfHeight)  },
+                                                        { Vector2( halfWidth, -halfHeight) },
+                                                        { Vector2( halfWidth, halfHeight)  } };
             PropertyMap vertexFormat = new PropertyMap();
             vertexFormat.Add("aPosition", new PropertyValue((int)PropertyType.Vector2));
-
             PropertyBuffer vertexBuffer = new PropertyBuffer(vertexFormat);
-            vertexBuffer.SetData(RectangleDataPtr(), 4);
+            vertexBuffer.SetData(quadVertexData, 4);
 
             /* Create geometry */
             Geometry geometry = new Geometry();
@@ -143,30 +140,6 @@ namespace NUISample
             AddRenderer(renderer);
         }
 
-        public ImageView MaskImage{get;set;}
-
-        private global::System.IntPtr RectangleDataPtr()
-        {
-            TexturedQuadVertex vertex1 = new TexturedQuadVertex();
-            TexturedQuadVertex vertex2 = new TexturedQuadVertex();
-            TexturedQuadVertex vertex3 = new TexturedQuadVertex();
-            TexturedQuadVertex vertex4 = new TexturedQuadVertex();
-            vertex1.position = new Vec2(-0.5f, -0.5f);
-            vertex2.position = new Vec2(-0.5f, 0.5f);
-            vertex3.position = new Vec2(0.5f, -0.5f);
-            vertex4.position = new Vec2(0.5f, 0.5f);
-
-            TexturedQuadVertex[] texturedQuadVertexData = new TexturedQuadVertex[4] { vertex1, vertex2, vertex3, vertex4 };
-
-            int length = Marshal.SizeOf(vertex1);
-            global::System.IntPtr pA = Marshal.AllocHGlobal(length * 4);
-
-            for (int i = 0; i < 4; i++)
-            {
-                Marshal.StructureToPtr(texturedQuadVertexData[i], pA + i * length, true);
-            }
-
-            return pA;
-        }
+        public ImageView BackgroundImage{get;set;}
     }
 }
